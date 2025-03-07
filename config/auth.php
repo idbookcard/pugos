@@ -17,7 +17,8 @@ return [
         'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
-
+// config/auth.php (add this to the file)
+'admin_emails' => explode(',', env('ADMIN_EMAILS', 'admin@example.com')),
     /*
     |--------------------------------------------------------------------------
     | Authentication Guards
