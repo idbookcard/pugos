@@ -1,5 +1,5 @@
 <?php
-
+// app/Http/Controllers/PackageController.php
 namespace App\Http\Controllers;
 
 use App\Models\Package;
@@ -8,73 +8,74 @@ use Illuminate\Http\Request;
 
 class PackageController extends Controller
 {
-    /**
-     * 显示所有套餐
-     */
     public function index()
     {
-        $categories = PackageCategory::active()
+        $featured = Package::where('is_featured', true)
+            ->where('active', true)
             ->orderBy('sort_order')
-            ->with(['packages' => function($query) {
-                $query->where('active', 1)->orderBy('sort_order');
-            }])
+            ->take(6)
             ->get();
             
-        return view('packages.index', compact('categories'));
+        $categories = PackageCategory::where('active', true)
+            ->orderBy('sort_order')
+            ->get();
+            
+        return view('packages.index', compact('featured', 'categories'));
     }
     
-    /**
-     * 显示月度套餐
-     */
     public function monthly()
     {
-        $packages = Package::monthly()->orderBy('sort_order')->get();
+        $packages = Package::where('package_type', 'monthly')
+            ->where('active', true)
+            ->orderBy('sort_order')
+            ->paginate(12);
+            
         return view('packages.monthly', compact('packages'));
     }
     
-    /**
-     * 显示单项套餐
-     */
     public function single()
     {
-        $packages = Package::single()->orderBy('sort_order')->get();
+        $packages = Package::where('package_type', 'single')
+            ->where('active', true)
+            ->orderBy('sort_order')
+            ->paginate(12);
+            
         return view('packages.single', compact('packages'));
     }
     
-    /**
-     * 显示第三方套餐
-     */
     public function thirdParty()
     {
-        $packages = Package::thirdParty()->orderBy('sort_order')->get();
-        return view('packages.third-party', compact('packages'));
+        $packages = Package::where('package_type', 'third_party')
+            ->where('active', true)
+            ->orderBy('sort_order')
+            ->paginate(12);
+            
+        return view('packages.third_party', compact('packages'));
     }
     
-    /**
-     * 显示软文外链套餐
-     */
     public function guestPost()
     {
-        $packages = Package::guestPost()->orderBy('sort_order')->get();
-        return view('packages.guest-post', compact('packages'));
+        $packages = Package::where('package_type', 'guest_post')
+            ->where('active', true)
+            ->orderBy('sort_order')
+            ->paginate(12);
+            
+        return view('packages.guest_post', compact('packages'));
     }
     
-    /**
-     * 显示单个套餐详情
-     */
     public function show(Package $package)
     {
         if (!$package->active) {
             abort(404);
         }
         
-        // 获取同类型的相关套餐
-        $relatedPackages = Package::where('package_type', $package->package_type)
+        $relatedPackages = Package::where('category_id', $package->category_id)
             ->where('id', '!=', $package->id)
-            ->where('active', 1)
-            ->limit(3)
+            ->where('active', true)
+            ->orderBy('sort_order')
+            ->take(4)
             ->get();
             
         return view('packages.show', compact('package', 'relatedPackages'));
     }
-} 
+}

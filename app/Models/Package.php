@@ -10,28 +10,19 @@ class Package extends Model
     use HasFactory;
     
     protected $fillable = [
-        'category_id',
-        'name',
-        'name_en',
-        'slug',
-        'description',
-        'description_zh',
-        'features',
-        'price',
-        'original_price',
-        'delivery_days',
-        'package_type',
-        'is_featured',
-        'active',
-        'sort_order',
-        'third_party_id',
-        'guest_post_da'
+        'category_id', 'third_party_id', 'guest_post_da', 'name', 'name_en',
+        'slug', 'description', 'description_zh', 'features', 'price',
+        'original_price', 'delivery_days', 'package_type', 'is_featured',
+        'active', 'sort_order'
     ];
+
     
     protected $casts = [
         'features' => 'array',
+        'price' => 'decimal:2',
+        'original_price' => 'decimal:2',
         'is_featured' => 'boolean',
-        'active' => 'boolean'
+        'active' => 'boolean',
     ];
     
     /**

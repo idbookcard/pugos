@@ -17,6 +17,10 @@ use App\Http\Controllers\Admin\GuestPostController;
 use App\Http\Controllers\Admin\ThirdPartyOrderController;
 use App\Http\Controllers\Packages\ThirdPartyOrderController as CustomerThirdPartyOrderController;
 use App\Http\Controllers\Api\ThirdPartyWebhookController;
+use App\Http\Controllers\DashboardController;
+
+Auth::routes(['verify' => true]);
+
 
 // 公共路由
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -51,6 +55,30 @@ Route::middleware(['auth'])->prefix('customer')->group(function () {
     Route::get('/packages/third-party/{package}/order', [CustomerThirdPartyOrderController::class, 'create'])
         ->name('packages.third-party.order');
     Route::post('/packages/third-party/{package}/order', [CustomerThirdPartyOrderController::class, 'store']);
+});
+
+
+// User Dashboard Routes
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/profile', [DashboardController::class, 'profile'])->name('dashboard.profile');
+Route::post('/profile', [DashboardController::class, 'updateProfile'])->name('dashboard.profile.update');
+
+// Admin Routes
+Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'admin'], 'as' => 'admin.'], function () {
+    Route::get('/', function () {
+        return redirect()->route('admin.dashboard');
+    });
+    
+    Route::get('/dashboard', function () {
+        return view('admin.dashboard');
+    })->name('dashboard');
+    
+    // User Management
+    Route::resource('users', UserController::class);
+    Route::post('users/{user}/adjust-balance', [UserController::class, 'adjustBalance'])->name('users.adjust-balance');
+    Route::resource('categories', PackageCategoryController::class, ['as' => 'admin']);
+
+
 });
 
 // 管理员路由 (需要认证和管理员权限)
