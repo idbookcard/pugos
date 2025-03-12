@@ -11,9 +11,9 @@
                 <h1 class="display-4 fw-bold mb-4">提升您的网站排名<br>从高质量外链开始</h1>
                 <p class="lead mb-4">我们提供专业的SEO外链建设服务，帮助您的网站在谷歌搜索结果中脱颖而出，获得持续的自然流量。</p>
                 <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-md-start">
-                    <a href="{{ route('packages.monthly') }}" class="btn btn-light btn-lg px-4 py-2">月度套餐</a>
-                    <a href="{{ route('packages.single') }}" class="btn btn-outline-light btn-lg px-4 py-2">单项套餐</a>
-                    <a href="{{ route('packages.guest-post') }}" class="btn btn-outline-light btn-lg px-4 py-2">软文外链</a>
+                    <a href="{{ route('packages.category', 'monthly') }}" class="btn btn-light btn-lg px-4 py-2">月度套餐</a>
+                    <a href="{{ route('packages.category', 'single') }}" class="btn btn-outline-light btn-lg px-4 py-2">单项套餐</a>
+                    <a href="{{ route('packages.category', 'guest-post') }}" class="btn btn-outline-light btn-lg px-4 py-2">软文外链</a>
                 </div>
             </div>
             <div class="col-lg-5 d-none d-lg-block">
@@ -114,7 +114,7 @@
     </div>
     
     <div class="text-center mb-5">
-        <a href="{{ route('packages') }}" class="btn btn-outline-primary btn-lg">查看所有服务</a>
+        <a href="{{ route('packages.index') }}" class="btn btn-outline-primary btn-lg">查看所有服务</a>
     </div>
     
     <!-- 外链类型介绍 -->
@@ -378,7 +378,7 @@
                 <div class="card-body py-5 text-center">
                     <h2 class="fw-bold mb-3">准备好提升您的网站排名了吗？</h2>
                     <p class="lead mb-4">立即选择适合您的外链服务，开启SEO优化之旅</p>
-                    <a href="{{ route('packages') }}" class="btn btn-light btn-lg">浏览所有服务</a>
+                    <a href="{{ route('packages.index') }}" class="btn btn-light btn-lg">浏览所有服务</a>
                 </div>
             </div>
         </div>
