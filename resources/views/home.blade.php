@@ -69,7 +69,7 @@
             <p class="text-muted">为不同需求的客户提供多样化的外链解决方案</p>
         </div>
         
-        @foreach($featuredPackages as $package)
+        @foreach($featured  as $package)
         <div class="col-lg-4 col-md-6 mb-4">
             <div class="card h-100 package-card {{ $package->is_featured ? 'featured-package' : '' }}">
                 @if($package->is_featured)

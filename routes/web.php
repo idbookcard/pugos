@@ -17,7 +17,6 @@ use App\Http\Controllers\Admin\GuestPostController;
 use App\Http\Controllers\Admin\ThirdPartyOrderController;
 use App\Http\Controllers\Packages\ThirdPartyOrderController as CustomerThirdPartyOrderController;
 use App\Http\Controllers\Api\ThirdPartyWebhookController;
-use App\Http\Controllers\DashboardController;
 
 Auth::routes(['verify' => true]);
 
