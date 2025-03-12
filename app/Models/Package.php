@@ -8,76 +8,83 @@ use Illuminate\Database\Eloquent\Model;
 class Package extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
-        'category_id', 'third_party_id', 'guest_post_da', 'name', 'name_en',
-        'slug', 'description', 'description_zh', 'features', 'price',
-        'original_price', 'delivery_days', 'package_type', 'is_featured',
-        'active', 'sort_order'
+        'category_id',
+        'third_party_id',
+        'guest_post_da',
+        'name',
+        'name_en',
+        'slug',
+        'description',
+        'description_zh',
+        'features',
+        'price',
+        'original_price',
+        'delivery_days',
+        'package_type',
+        'is_featured',
+        'active',
+        'sort_order'
     ];
 
-    
     protected $casts = [
         'features' => 'array',
         'price' => 'decimal:2',
         'original_price' => 'decimal:2',
         'is_featured' => 'boolean',
-        'active' => 'boolean',
+        'active' => 'boolean'
     ];
-    
+
     /**
-     * 获取套餐所属分类
+     * 获取套餐分类
      */
     public function category()
     {
-        return $this->belongsTo(PackageCategory::class);
+        return $this->belongsTo(PackageCategory::class, 'category_id');
     }
-    
+
     /**
-     * 获取套餐的所有订单
+     * 获取套餐下的订单
      */
     public function orders()
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(Order::class, 'package_id');
     }
-    
+
     /**
-     * 月度套餐范围查询
+     * 判断是否为第三方API套餐
      */
-    public function scopeMonthly($query)
+    public function isThirdParty()
     {
-        return $query->where('package_type', 'monthly')->where('active', 1);
+        return $this->package_type === 'third_party';
     }
-    
+
     /**
-     * 单项套餐范围查询
+     * 判断是否为Guest Post套餐
      */
-    public function scopeSingle($query)
+    public function isGuestPost()
     {
-        return $query->where('package_type', 'single')->where('active', 1);
+        return $this->package_type === 'guest_post';
     }
-    
+
     /**
-     * 第三方套餐范围查询
+     * 判断是否为包月套餐
      */
-    public function scopeThirdParty($query)
+    public function isMonthly()
     {
-        return $query->where('package_type', 'third_party')->where('active', 1);
+        return $this->package_type === 'monthly';
     }
-    
+
     /**
-     * 软文外链范围查询
+     * 获取折扣百分比
      */
-    public function scopeGuestPost($query)
+    public function getDiscountPercentageAttribute()
     {
-        return $query->where('package_type', 'guest_post')->where('active', 1);
+        if (!$this->original_price || $this->original_price <= $this->price) {
+            return 0;
+        }
+
+        return round((1 - ($this->price / $this->original_price)) * 100);
     }
-    
-    /**
-     * 推荐套餐范围查询
-     */
-    public function scopeFeatured($query)
-    {
-        return $query->where('is_featured', 1)->where('active', 1);
-    }
-} 
+}

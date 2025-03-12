@@ -2,573 +2,279 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use App\Models\Order;
 use App\Models\Package;
-use App\Models\ExternalService;
-use App\Models\GuestPostSite;
-use Carbon\Carbon;
+use App\Models\ApiOrder;
+use App\Services\AccountService;
+use App\Services\SEOeStoreApiService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
-    protected $seoEstoreApiService;
-    protected $guestPostService;
-    protected $lastError;
-
-    /**
-     * 构造函数
-     *
-     * @param SeoEstoreApiService $seoEstoreApiService
-     * @param GuestPostService $guestPostService
-     */
-    public function __construct(SeoEstoreApiService $seoEstoreApiService, GuestPostService $guestPostService)
+    protected $accountService;
+    protected $apiService;
+    
+    public function __construct(AccountService $accountService, SEOeStoreApiService $apiService)
     {
-        $this->seoEstoreApiService = $seoEstoreApiService;
-        $this->guestPostService = $guestPostService;
+        $this->accountService = $accountService;
+        $this->apiService = $apiService;
     }
-
+    
     /**
-     * 获取最后的错误信息
+     * 创建新订单
      */
-    public function getLastError()
+    public function createOrder($userId, $packageId, $data)
     {
-        return $this->lastError;
-    }
-
-    /**
-     * 创建套餐订单
-     *
-     * @param array $orderData
-     * @return bool|array
-     */
-    public function createPackageOrder($orderData)
-    {
-        $package = Package::find($orderData['package_id']);
+        $package = Package::findOrFail($packageId);
+        $quantity = $data['quantity'] ?? 1;
+        $totalAmount = $package->price * $quantity;
         
-        if (!$package) {
-            $this->lastError = "找不到指定套餐";
-            return false;
+        // 验证余额
+        if (!$this->accountService->checkBalance($userId, $totalAmount)) {
+            throw new \Exception('账户余额不足');
         }
         
+        DB::beginTransaction();
         try {
-            DB::beginTransaction();
-            
-            $order = new Order();
-            $order->user_id = $orderData['user_id'];
-            $order->service_type = 'package';
-            $order->package_id = $package->id;
-            $order->target_url = $orderData['target_url'];
-            $order->keywords = $orderData['keywords'] ?? '';
-            $order->anchor_text = $orderData['anchor_text'] ?? '';
-            $order->comments = $orderData['comments'] ?? '';
-            $order->price = $package->price;
-            $order->quantity = 1;
-            $order->status = 'pending';
-            $order->payment_status = $orderData['payment_status'] ?? 'pending';
-            $order->order_date = Carbon::now();
-            $order->save();
-            
-            DB::commit();
-            
-            return [
-                'success' => true,
-                'order_id' => $order->id,
-                'message' => '订单已提交成功，等待支付'
-            ];
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->lastError = "创建订单失败: " . $e->getMessage();
-            Log::error('创建套餐订单失败', [
-                'exception' => $e->getMessage(),
-                'order_data' => $orderData
+            // 创建订单
+            $order = Order::create([
+                'user_id' => $userId,
+                'package_id' => $packageId,
+                'order_number' => $this->generateOrderNumber(),
+                'service_type' => $this->determineServiceType($package),
+                'status' => 'pending',
+                'payment_status' => 'unpaid', // 先设为未支付
+                'total_amount' => $totalAmount,
+                'target_url' => $data['target_url'],
+                'keywords' => $data['keywords'] ?? null,
+                'article' => $data['article'] ?? null,
+                'extra_data' => isset($data['extras']) ? json_encode($data['extras']) : null,
+                'order_date' => now()
             ]);
-            return false;
-        }
-    }
-
-    /**
-     * 创建外部服务订单
-     *
-     * @param array $orderData
-     * @return bool|array
-     */
-    public function createExternalServiceOrder($orderData)
-    {
-        $service = ExternalService::find($orderData['external_service_id']);
-        
-        if (!$service) {
-            $this->lastError = "找不到指定服务";
-            return false;
-        }
-        
-        try {
-            DB::beginTransaction();
             
-            $order = new Order();
-            $order->user_id = $orderData['user_id'];
-            $order->service_type = 'external';
-            $order->external_service_id = $service->id;
-            $order->target_url = $orderData['target_url'];
-            $order->quantity = $orderData['quantity'] ?? 1;
-            $order->anchor_text = $orderData['anchor_text'] ?? '';
-            $order->comments = $orderData['comments'] ?? '';
-            $order->price = $service->price * $order->quantity;
-            $order->status = 'pending';
-            $order->payment_status = $orderData['payment_status'] ?? 'pending';
-            $order->order_date = Carbon::now();
-            $order->save();
-            
-            DB::commit();
-            
-            return [
-                'success' => true,
+            // 记录订单状态
+            \App\Models\OrderStatusLog::create([
                 'order_id' => $order->id,
-                'message' => '订单已提交成功，等待支付'
-            ];
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->lastError = "创建订单失败: " . $e->getMessage();
-            Log::error('创建外部服务订单失败', [
-                'exception' => $e->getMessage(),
-                'order_data' => $orderData
+                'new_status' => 'pending',
+                'notes' => '订单创建',
+                'created_by' => $userId
             ]);
-            return false;
-        }
-    }
-
-    /**
-     * 创建Guest Post订单
-     *
-     * @param array $orderData
-     * @return bool|array
-     */
-    public function createGuestPostOrder($orderData)
-    {
-        return $this->guestPostService->placeGuestPostOrder(
-            $orderData['guest_post_site_id'],
-            $orderData
-        );
-    }
-
-    /**
-     * 处理订单支付
-     *
-     * @param int $orderId
-     * @param array $paymentData
-     * @return bool|array
-     */
-    public function processPayment($orderId, $paymentData)
-    {
-        $order = Order::find($orderId);
-        
-        if (!$order) {
-            $this->lastError = "找不到指定订单";
-            return false;
-        }
-        
-        try {
-            DB::beginTransaction();
             
-            // 更新支付状态
-            $order->payment_status = 'paid';
-            $order->payment_method = $paymentData['payment_method'];
-            $order->payment_id = $paymentData['payment_id'] ?? null;
-            $order->paid_amount = $paymentData['amount'];
-            $order->payment_date = Carbon::now();
-            $order->save();
+            // 扣减余额
+            $this->accountService->processConsumption($userId, $totalAmount, $order->id);
             
-            // 根据设置决定是否自动提交到第三方
-            $autoSubmit = config('services.order.auto_submit_after_payment', false);
-            
-            if ($autoSubmit && $order->service_type === 'external') {
-                $this->submitExternalOrder($order->id);
-            }
-            
-            DB::commit();
-            
-            return [
-                'success' => true,
-                'order_id' => $order->id,
-                'message' => '支付处理成功'
-            ];
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->lastError = "处理支付失败: " . $e->getMessage();
-            Log::error('处理订单支付失败', [
-                'exception' => $e->getMessage(),
-                'order_id' => $orderId,
-                'payment_data' => $paymentData
+            // 更新订单为已支付
+            $order->update([
+                'payment_status' => 'paid',
+                'paid_at' => now()
             ]);
-            return false;
-        }
-    }
-
-    /**
-     * 提交外部订单到第三方平台
-     *
-     * @param int $orderId
-     * @return bool|array
-     */
-    public function submitExternalOrder($orderId)
-    {
-        $order = Order::where('id', $orderId)
-            ->where('service_type', 'external')
-            ->where('payment_status', 'paid')
-            ->whereNull('external_order_id')
-            ->first();
-        
-        if (!$order) {
-            $this->lastError = "找不到可提交的订单";
-            return false;
-        }
-        
-        $result = $this->seoEstoreApiService->placeOrder($order);
-        
-        if (!$result) {
-            $this->lastError = $this->seoEstoreApiService->getLastError();
-            return false;
-        }
-        
-        return [
-            'success' => true,
-            'order_id' => $order->id,
-            'external_order_id' => $result['external_order_id'],
-            'message' => '订单已成功提交到第三方平台'
-        ];
-    }
-
-    /**
-     * 更新订单状态
-     *
-     * @param int $orderId
-     * @param string $status
-     * @param string $notes
-     * @return bool|array
-     */
-    public function updateOrderStatus($orderId, $status, $notes = '')
-    {
-        $order = Order::find($orderId);
-        
-        if (!$order) {
-            $this->lastError = "找不到指定订单";
-            return false;
-        }
-        
-        try {
-            $oldStatus = $order->status;
-            $order->status = $status;
-            $order->admin_notes = $notes;
-            $order->last_status_update = Carbon::now();
-            $order->save();
             
-            // 记录状态变更
-            $this->logStatusChange($order, $oldStatus, $status, $notes);
-            
-            return [
-                'success' => true,
-                'order_id' => $order->id,
-                'message' => '订单状态已更新'
-            ];
-        } catch (\Exception $e) {
-            $this->lastError = "更新订单状态失败: " . $e->getMessage();
-            Log::error('更新订单状态失败', [
-                'exception' => $e->getMessage(),
-                'order_id' => $orderId,
-                'status' => $status
-            ]);
-            return false;
-        }
-    }
+           
+// 如果是第三方API产品，检查是否需要自动提交
+if ($package->isThirdParty() && $package->third_party_id) {
+    // 创建API订单记录
+    $apiOrder = ApiOrder::create([
+        'order_id' => $order->id
+    ]);
+    
+    // 更新订单状态为处理中
+    $order->update(['status' => 'processing']);
+    
+    // 记录订单状态变更
+    \App\Models\OrderStatusLog::create([
+        'order_id' => $order->id,
+        'old_status' => 'pending',
+        'new_status' => 'processing',
+        'notes' => '自动提交到API处理',
+        'created_by' => 0 // 系统操作
+    ]);
+    
+    // 提交API订单
+    $this->processApiOrder($order->id);
+}
 
-    /**
-     * 记录状态变更
-     *
-     * @param Order $order
-     * @param string $oldStatus
-     * @param string $newStatus
-     * @param string $notes
-     * @return void
-     */
-    protected function logStatusChange($order, $oldStatus, $newStatus, $notes)
-    {
+DB::commit();
+return $order;
+} catch (\Exception $e) {
+    DB::rollBack();
+    Log::error('创建订单失败: ' . $e->getMessage());
+    throw $e;
+}
+}
+    
+/**
+ * 处理API订单
+ */
+public function processApiOrder($orderId)
+{
+    $order = Order::with(['apiOrder'])->findOrFail($orderId);
+    
+    // 检查是否为第三方产品
+    if ($order->service_type !== 'external' && $order->service_type !== 'package') {
+        throw new \Exception('非API产品订单');
+    }
+    
+    // 获取包裹信息
+    $package = Package::find($order->package_id);
+    if (!$package || !$package->third_party_id) {
+        throw new \Exception('API产品信息不存在');
+    }
+    
+    // 检查是否已有API订单记录
+    if (!$order->apiOrder) {
+        // 创建API订单记录
+        $apiOrder = ApiOrder::create([
+            'order_id' => $order->id
+        ]);
+    } else {
+        $apiOrder = $order->apiOrder;
+    }
+    
+    // 准备API订单数据
+    $apiOrderData = [
+        'target_url' => $order->target_url,
+        'keywords' => $order->keywords,
+        'article' => $order->article,
+        'extras' => json_decode($order->extra_data, true),
+        'quantity' => 1,
+    ];
+    
+    // 调用API创建订单
+    $result = $this->apiService->createOrder(
+        $package->third_party_id,
+        $apiOrderData
+    );
+    
+    // 更新ApiOrder记录
+    $apiOrder->update([
+        'api_order_id' => $result['order_id'],
+        'api_status' => $result['success'] ? 'submitted' : 'failed',
+        'api_response' => json_encode($result['response']),
+        'submitted_at' => now(),
+    ]);
+    
+    // 如果API提交失败，记录错误并更新订单状态
+    if (!$result['success']) {
+        Log::error('API订单提交失败: ' . ($result['message'] ?? '未知错误') . ' 订单ID: ' . $order->id);
+        
+        // 记录状态日志
         \App\Models\OrderStatusLog::create([
             'order_id' => $order->id,
-            'old_status' => $oldStatus,
-            'new_status' => $newStatus,
-            'notes' => $notes,
-            'created_by' => auth()->id() ?? 0,
-            'created_at' => Carbon::now()
+            'old_status' => $order->status,
+            'new_status' => $order->status, // 状态不变
+            'notes' => 'API提交失败: ' . ($result['message'] ?? '未知错误'),
+            'created_by' => 0 // 系统操作
         ]);
+        
+        return false;
     }
+    
+    return true;
+}
 
-    /**
-     * 获取用户订单列表
-     *
-     * @param int $userId
-     * @param array $filters
-     * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
-     */
-    public function getUserOrders($userId, $filters = [], $perPage = 10)
-    {
-        $query = Order::where('user_id', $userId);
-        
-        // 应用筛选条件
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-        
-        if (!empty($filters['service_type'])) {
-            $query->where('service_type', $filters['service_type']);
-        }
-        
-        if (!empty($filters['date_from'])) {
-            $query->where('order_date', '>=', Carbon::parse($filters['date_from']));
-        }
-        
-        if (!empty($filters['date_to'])) {
-            $query->where('order_date', '<=', Carbon::parse($filters['date_to']));
-        }
-        
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('id', 'like', "%{$search}%")
-                  ->orWhere('target_url', 'like', "%{$search}%")
-                  ->orWhere('keywords', 'like', "%{$search}%");
-            });
-        }
-        
-        // 默认按时间倒序
-        $query->orderBy('order_date', 'desc');
-        
-        return $query->paginate($perPage);
+/**
+ * 同步API订单状态
+ */
+public function syncApiOrderStatus($apiOrderId = null)
+{
+    // 如果提供了特定的API订单ID，只同步该订单
+    if ($apiOrderId) {
+        $apiOrders = ApiOrder::where('id', $apiOrderId)->get();
+    } else {
+        // 否则同步所有处理中的API订单
+        $apiOrders = ApiOrder::whereNotNull('api_order_id')
+            ->whereNull('completed_at')
+            ->get();
     }
-
-    /**
-     * 获取所有订单列表(管理员用)
-     *
-     * @param array $filters
-     * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
-     */
-    public function getAllOrders($filters = [], $perPage = 20)
-    {
-        $query = Order::query();
+    
+    $updated = 0;
+    $completed = 0;
+    
+    foreach ($apiOrders as $apiOrder) {
+        // 获取API订单状态
+        $result = $this->apiService->getOrderStatus($apiOrder->api_order_id);
         
-        // 应用筛选条件
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if (!$result['success']) {
+            continue;
         }
         
-        if (!empty($filters['payment_status'])) {
-            $query->where('payment_status', $filters['payment_status']);
-        }
+        // 更新API订单状态
+        $apiOrder->api_status = $result['status'];
         
-        if (!empty($filters['service_type'])) {
-            $query->where('service_type', $filters['service_type']);
-        }
-        
-        if (!empty($filters['user_id'])) {
-            $query->where('user_id', $filters['user_id']);
-        }
-        
-        if (!empty($filters['date_from'])) {
-            $query->where('order_date', '>=', Carbon::parse($filters['date_from']));
-        }
-        
-        if (!empty($filters['date_to'])) {
-            $query->where('order_date', '<=', Carbon::parse($filters['date_to']));
-        }
-        
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('id', 'like', "%{$search}%")
-                  ->orWhere('target_url', 'like', "%{$search}%")
-                  ->orWhere('keywords', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($u) use ($search) {
-                      $u->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                  });
-            });
-        }
-        
-        // 默认按时间倒序
-        $query->orderBy('order_date', 'desc');
-        
-        return $query->paginate($perPage);
-    }
-
-    /**
-     * 取消订单
-     *
-     * @param int $orderId
-     * @param string $reason
-     * @param int $userId
-     * @return bool|array
-     */
-    public function cancelOrder($orderId, $reason, $userId)
-    {
-        $order = Order::where('id', $orderId)
-            ->where('user_id', $userId)
-            ->whereIn('status', ['pending', 'processing'])
-            ->first();
-        
-        if (!$order) {
-            $this->lastError = "找不到可取消的订单";
-            return false;
-        }
-        
-        try {
-            DB::beginTransaction();
+        // 如果订单已完成
+        if ($result['status'] === 'completed') {
+            $apiOrder->completed_at = now();
+            $completed++;
             
-            $oldStatus = $order->status;
-            $order->status = 'cancelled';
-            $order->cancellation_reason = $reason;
-            $order->cancelled_at = Carbon::now();
-            $order->save();
-            
-            // 记录状态变更
-            $this->logStatusChange($order, $oldStatus, 'cancelled', $reason);
-            
-            // 如果已支付，创建退款记录
-            if ($order->payment_status === 'paid') {
-                $order->refund_status = 'pending';
-                $order->save();
-            }
-            
-            DB::commit();
-            
-            return [
-                'success' => true,
-                'order_id' => $order->id,
-                'message' => '订单已成功取消'
-            ];
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->lastError = "取消订单失败: " . $e->getMessage();
-            Log::error('取消订单失败', [
-                'exception' => $e->getMessage(),
-                'order_id' => $orderId,
-                'user_id' => $userId
-            ]);
-            return false;
-        }
-    }
-
-    /**
-     * 获取订单详情
-     *
-     * @param int $orderId
-     * @param int|null $userId
-     * @return bool|array
-     */
-    public function getOrderDetails($orderId, $userId = null)
-    {
-        $query = Order::with(['user', 'statusLogs']);
-        
-        // 如果提供了用户ID，检查订单所有权
-        if ($userId) {
-            $query->where('user_id', $userId);
-        }
-        
-        $order = $query->find($orderId);
-        
-        if (!$order) {
-            $this->lastError = "找不到指定订单";
-            return false;
-        }
-        
-        // 根据订单类型加载关联信息
-        if ($order->service_type === 'package') {
-            $order->load('package');
-        } elseif ($order->service_type === 'external') {
-            $order->load('externalService');
-        } elseif ($order->service_type === 'guest_post') {
-            $order->load('guestPostSite');
-        }
-        
-        // 如果是外部订单且有外部订单ID，获取最新状态
-        if ($order->service_type === 'external' && $order->external_order_id) {
-            $externalStatus = $this->seoEstoreApiService->getOrderStatus($order->external_order_id);
-            if ($externalStatus) {
-                $order->external_status = $externalStatus;
-            }
-        }
-        
-        return [
-            'order' => $order,
-            'status_history' => $order->statusLogs
-        ];
-    }
-
-    /**
-     * 批量更新外部订单状态
-     *
-     * @return array
-     */
-    public function updateExternalOrderStatuses()
-    {
-        return $this->seoEstoreApiService->updateOrderStatuses();
-    }
-
-    /**
-     * 处理订单退款
-     *
-     * @param int $orderId
-     * @param array $refundData
-     * @return bool|array
-     */
-    public function processRefund($orderId, $refundData)
-    {
-        $order = Order::where('id', $orderId)
-            ->where('payment_status', 'paid')
-            ->where('refund_status', 'pending')
-            ->first();
-        
-        if (!$order) {
-            $this->lastError = "找不到可退款的订单";
-            return false;
-        }
-        
-        try {
-            DB::beginTransaction();
-            
-            // 更新退款状态
-            $order->refund_status = 'completed';
-            $order->refund_amount = $refundData['amount'];
-            $order->refund_notes = $refundData['notes'] ?? '';
-            $order->refunded_at = Carbon::now();
-            $order->save();
-            
-            // 如果订单状态不是已取消，则更新为已退款
-            if ($order->status !== 'cancelled') {
+            // 更新主订单状态
+            $order = Order::find($apiOrder->order_id);
+            if ($order) {
                 $oldStatus = $order->status;
-                $order->status = 'refunded';
+                $order->status = 'completed';
+                $order->completed_at = now();
                 $order->save();
                 
+                // 创建订单报告
+                \App\Models\OrderReport::create([
+                    'order_id' => $order->id,
+                    'status' => 'completed',
+                    'report_data' => json_encode($result['response']),
+                    'source' => 'api',
+                    'placed_at' => now()
+                ]);
+                
                 // 记录状态变更
-                $this->logStatusChange($order, $oldStatus, 'refunded', $refundData['notes'] ?? '');
+                \App\Models\OrderStatusLog::create([
+                    'order_id' => $order->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => 'completed',
+                    'notes' => 'API订单完成',
+                    'created_by' => 0 // 系统操作
+                ]);
             }
-            
-            DB::commit();
-            
-            return [
-                'success' => true,
-                'order_id' => $order->id,
-                'message' => '订单退款已处理成功'
-            ];
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->lastError = "处理退款失败: " . $e->getMessage();
-            Log::error('处理订单退款失败', [
-                'exception' => $e->getMessage(),
-                'order_id' => $orderId,
-                'refund_data' => $refundData
-            ]);
-            return false;
         }
+        
+        $apiOrder->save();
+        $updated++;
+    }
+    
+    return [
+        'updated' => $updated,
+        'completed' => $completed
+    ];
+}
+
+/**
+ * 生成订单号
+ */
+protected function generateOrderNumber()
+{
+    $prefix = date('Ymd');
+    $suffix = mt_rand(1000, 9999);
+    
+    $orderNumber = $prefix . $suffix;
+    
+    // 确保订单号唯一
+    while (Order::where('order_number', $orderNumber)->exists()) {
+        $suffix = mt_rand(1000, 9999);
+        $orderNumber = $prefix . $suffix;
+    }
+    
+    return $orderNumber;
+}
+
+/**
+ * 确定服务类型
+ */
+protected function determineServiceType($package)
+{
+    switch ($package->package_type) {
+        case 'third_party':
+            return 'external';
+        case 'guest_post':
+            return 'guest_post';
+        default:
+            return 'package';
     }
 }
