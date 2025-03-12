@@ -1,3 +1,4 @@
+<?php
 // app/Models/SystemSetting.php
 namespace App\Models;
 

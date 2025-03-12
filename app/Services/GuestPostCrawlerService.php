@@ -9,7 +9,7 @@ use App\Models\GuestPostSite;
 use App\Models\GuestPostCategory;
 use Carbon\Carbon;
 
-class GuestPostService
+class GuestPostCrawlerService
 {
     protected $baseUrl;
     protected $lastError;

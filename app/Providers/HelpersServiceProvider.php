@@ -3,6 +3,10 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Blade;
+
 
 class HelpersServiceProvider extends ServiceProvider
 {
@@ -17,10 +21,8 @@ class HelpersServiceProvider extends ServiceProvider
         require_once app_path('Helpers/AppHelpers.php');
         
         // Register system settings in config
-        $this->loadSystemSettings();
         
         // Register custom blade directives
-        $this->registerBladeDirectives();
     }
 
     /**
@@ -30,7 +32,12 @@ class HelpersServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        if ($this->app->runningInConsole()) {
+            return; 
+        }
+        $this->loadSystemSettings(); 
+        $this->registerBladeDirectives();
+
     }
     
     /**
@@ -38,22 +45,19 @@ class HelpersServiceProvider extends ServiceProvider
      */
     protected function loadSystemSettings()
     {
-        if (!\Schema::hasTable('system_settings')) {
+        if (app()->runningInConsole() || !Schema::hasTable('system_settings')) {
             return;
         }
-        
+    
         try {
-            // Get settings from cache or database
             $settings = \Cache::remember('system_settings', 3600, function () {
                 return \App\Models\SystemSetting::all();
             });
-            
-            // Add settings to config
+    
             foreach ($settings as $setting) {
                 config(['pugos.settings.' . $setting->setting_key => $setting->setting_value]);
             }
-            
-            // Set admin emails
+    
             $adminEmails = config('pugos.settings.admin_emails');
             if ($adminEmails) {
                 $emails = is_array($adminEmails) ? $adminEmails : explode(',', $adminEmails);
@@ -64,11 +68,17 @@ class HelpersServiceProvider extends ServiceProvider
         }
     }
     
+    
     /**
      * Register custom blade directives
      */
     protected function registerBladeDirectives()
     {
+
+        if (!class_exists('Illuminate\View\Compilers\BladeCompiler')) {
+            return;
+        }
+
         // Format status with badge
         \Blade::directive('statusBadge', function ($expression) {
             return "<?php echo '<span class=\"badge ' . 
