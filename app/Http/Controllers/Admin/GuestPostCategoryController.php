@@ -11,18 +11,19 @@ class GuestPostCategoryController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'admin']);
+        $this->middleware('auth');
+        $this->middleware('master'); 
     }
     
     public function index()
     {
         $categories = GuestPostCategory::orderBy('sort_order')->paginate(15);
-        return view('admin.guest-post-categories.index', compact('categories'));
+        return view('master.guest-post-categories.index', compact('categories'));
     }
     
     public function create()
     {
-        return view('admin.guest-post-categories.create');
+        return view('master.guest-post-categories.create');
     }
     
     public function store(Request $request)
@@ -41,13 +42,13 @@ class GuestPostCategoryController extends Controller
             'active' => $request->has('active'),
         ]);
         
-        return redirect()->route('admin.guest-post-categories.index')
+        return redirect()->route('master.guest-post-categories.index')
             ->with('success', 'Guest Post category created successfully.');
     }
     
     public function edit(GuestPostCategory $category)
     {
-        return view('admin.guest-post-categories.edit', compact('category'));
+        return view('master.guest-post-categories.edit', compact('category'));
     }
     
     public function update(Request $request, GuestPostCategory $category)
@@ -66,7 +67,7 @@ class GuestPostCategoryController extends Controller
             'active' => $request->has('active'),
         ]);
         
-        return redirect()->route('admin.guest-post-categories.index')
+        return redirect()->route('master.guest-post-categories.index')
             ->with('success', 'Guest Post category updated successfully.');
     }
     
@@ -74,13 +75,13 @@ class GuestPostCategoryController extends Controller
     {
         // Check if the category has any guest post sites
         if ($category->sites()->count() > 0) {
-            return redirect()->route('admin.guest-post-categories.index')
+            return redirect()->route('master.guest-post-categories.index')
                 ->with('error', 'Cannot delete category with associated guest post sites.');
         }
         
         $category->delete();
         
-        return redirect()->route('admin.guest-post-categories.index')
+        return redirect()->route('master.guest-post-categories.index')
             ->with('success', 'Guest Post category deleted successfully.');
     }
     

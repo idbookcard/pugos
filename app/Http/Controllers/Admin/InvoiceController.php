@@ -55,7 +55,7 @@ class InvoiceController extends Controller
         $statuses = Invoice::distinct()->pluck('status');
         $invoiceTypes = Invoice::distinct()->pluck('invoice_type');
         
-        return view('admin.invoices.index', compact('invoices', 'statuses', 'invoiceTypes'));
+        return view('master.invoices.index', compact('invoices', 'statuses', 'invoiceTypes'));
     }
     
     /**
@@ -75,7 +75,7 @@ class InvoiceController extends Controller
                 ->get();
         }
         
-        return view('admin.invoices.show', compact('invoice', 'transactions'));
+        return view('master.invoices.show', compact('invoice', 'transactions'));
     }
     
     /**
@@ -102,7 +102,7 @@ class InvoiceController extends Controller
             // 审核通过发票
             $this->invoiceService->approveInvoice($id, auth()->id());
             
-            return redirect()->route('admin.invoices.index')
+            return redirect()->route('master.invoices.index')
                 ->with('success', '发票已审核通过并发送给用户');
         } catch (\Exception $e) {
             return back()->with('error', '审核发票失败: ' . $e->getMessage());
@@ -128,7 +128,7 @@ class InvoiceController extends Controller
             // 拒绝发票申请
             $this->invoiceService->rejectInvoice($id, $request->input('rejection_reason'), auth()->id());
             
-            return redirect()->route('admin.invoices.index')
+            return redirect()->route('master.invoices.index')
                 ->with('success', '发票申请已拒绝');
         } catch (\Exception $e) {
             return back()->with('error', '拒绝发票失败: ' . $e->getMessage());

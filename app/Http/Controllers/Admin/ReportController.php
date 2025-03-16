@@ -13,8 +13,8 @@ class ReportController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'admin']);
-    }
+        $this->middleware('auth');
+        $this->middleware('master');     }
     
     public function store(Request $request, Order $order)
     {
@@ -48,7 +48,7 @@ class ReportController extends Controller
             ]);
         }
         
-        return redirect()->route('admin.orders.show', $order)
+        return redirect()->route('master.orders.show', $order)
             ->with('success', 'Report added successfully.');
     }
     
@@ -58,7 +58,7 @@ class ReportController extends Controller
         
         $report->delete();
         
-        return redirect()->route('admin.orders.show', $order)
+        return redirect()->route('master.orders.show', $order)
             ->with('success', 'Report deleted successfully.');
     }
 }

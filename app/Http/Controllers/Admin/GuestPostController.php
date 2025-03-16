@@ -14,7 +14,8 @@ class GuestPostController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'admin']);
+        $this->middleware('auth');
+        $this->middleware('master'); 
     }
     
     public function index(Request $request)
@@ -58,13 +59,13 @@ class GuestPostController extends Controller
         $guestPosts = $query->paginate(15);
         $categories = GuestPostCategory::where('active', 1)->orderBy('name')->pluck('name', 'id');
         
-        return view('admin.guest-posts.index', compact('guestPosts', 'categories'));
+        return view('master.guest-posts.index', compact('guestPosts', 'categories'));
     }
     
     public function create()
     {
         $categories = GuestPostCategory::where('active', 1)->orderBy('name')->pluck('name', 'id');
-        return view('admin.guest-posts.create', compact('categories'));
+        return view('master.guest-posts.create', compact('categories'));
     }
     
     public function store(Request $request)
@@ -122,12 +123,12 @@ class GuestPostController extends Controller
             
             DB::commit();
             
-            return redirect()->route('admin.guest-posts')
+            return redirect()->route('master.guest-posts')
                 ->with('success', 'Guest Post site added successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             
-            return redirect()->route('admin.guest-posts.create')
+            return redirect()->route('master.guest-posts.create')
                 ->with('error', 'Failed to create Guest Post site: ' . $e->getMessage())
                 ->withInput();
         }
@@ -143,7 +144,7 @@ class GuestPostController extends Controller
             ->where('name', 'like', $guestPost->domain . '%')
             ->first();
         
-        return view('admin.guest-posts.edit', compact('guestPost', 'categories', 'packageRecord'));
+        return view('master.guest-posts.edit', compact('guestPost', 'categories', 'packageRecord'));
     }
     
     public function update(Request $request, GuestPostSite $package) // Using $package to match route parameter
@@ -204,12 +205,12 @@ class GuestPostController extends Controller
             
             DB::commit();
             
-            return redirect()->route('admin.guest-posts')
+            return redirect()->route('master.guest-posts')
                 ->with('success', 'Guest Post site updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             
-            return redirect()->route('admin.guest-posts.edit', $guestPost)
+            return redirect()->route('master.guest-posts.edit', $guestPost)
                 ->with('error', 'Failed to update Guest Post site: ' . $e->getMessage())
                 ->withInput();
         }
@@ -225,7 +226,7 @@ class GuestPostController extends Controller
             ->exists();
             
         if ($hasOrders) {
-            return redirect()->route('admin.guest-posts')
+            return redirect()->route('master.guest-posts')
                 ->with('error', 'Cannot delete Guest Post site with existing orders.');
         }
         
@@ -242,12 +243,12 @@ class GuestPostController extends Controller
             
             DB::commit();
             
-            return redirect()->route('admin.guest-posts')
+            return redirect()->route('master.guest-posts')
                 ->with('success', 'Guest Post site deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             
-            return redirect()->route('admin.guest-posts')
+            return redirect()->route('master.guest-posts')
                 ->with('error', 'Failed to delete Guest Post site: ' . $e->getMessage());
         }
     }

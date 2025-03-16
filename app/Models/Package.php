@@ -19,21 +19,28 @@ class Package extends Model
         'description',
         'description_zh',
         'features',
+        'available_extras', // 添加这个字段
         'price',
         'original_price',
         'delivery_days',
         'package_type',
         'is_featured',
         'active',
-        'sort_order'
+        'sort_order',
+        'is_api_product',
+        'min_quantity', // 可能也需要添加
+        'is_contextual' // 可能也需要添加
     ];
 
     protected $casts = [
         'features' => 'array',
-        'price' => 'decimal:2',
-        'original_price' => 'decimal:2',
+        'available_extras' => 'array', // 添加这个类型转换
+        'price' => 'decimal:7',
+        'original_price' => 'decimal:7',
         'is_featured' => 'boolean',
-        'active' => 'boolean'
+        'active' => 'boolean',
+        'is_api_product' => 'boolean',
+        'is_contextual' => 'boolean' // 可能也需要添加
     ];
 
     /**
@@ -87,4 +94,34 @@ class Package extends Model
 
         return round((1 - ($this->price / $this->original_price)) * 100);
     }
+
+
+    // 在 Package 模型中添加
+public function getFormattedPriceAttribute()
+{
+    $price = $this->price;
+    if ($price == 0) {
+        return '0';
+    }
+    
+    if ($price == (int)$price) {
+        return number_format($price, 0);
+    }
+    
+    return number_format($price, 2);
+}
+
+public function getFormattedOriginalPriceAttribute()
+{
+    $price = $this->original_price;
+    if ($price == 0) {
+        return '0';
+    }
+    
+    if ($price == (int)$price) {
+        return number_format($price, 0);
+    }
+    
+    return number_format($price, 2);
+}
 }

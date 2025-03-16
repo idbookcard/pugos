@@ -45,7 +45,7 @@ class ThirdPartyApiService
             $this->apiKey = $settings->api_key;
         } else {
             // Fallback to config values
-            $this->apiUrl = config('services.seoestore.api_url', 'https://panel.seoestore.net/api/v1');
+            $this->apiUrl = config('services.seoestore.api_url', 'https://panel.seoestore.net/action/api.php');
             $this->apiKey = config('services.seoestore.api_key');
         }
         

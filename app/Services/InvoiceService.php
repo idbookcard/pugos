@@ -201,3 +201,5 @@ protected function generateInvoiceFile($invoice)
     
     return $filePath;
 }
+
+}

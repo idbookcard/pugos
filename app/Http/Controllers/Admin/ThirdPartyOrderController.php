@@ -16,7 +16,8 @@ class ThirdPartyOrderController extends Controller
     
     public function __construct(ThirdPartyApiService $apiService)
     {
-        $this->middleware(['auth', 'admin']);
+        $this->middleware('auth');
+        $this->middleware('master'); 
         $this->apiService = $apiService;
     }
     
@@ -52,7 +53,7 @@ class ThirdPartyOrderController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(15, ['*'], 'processing_page');
         
-        return view('admin.third-party-orders.index', compact('pendingOrders', 'processingOrders'));
+        return view('master.third-party-orders.index', compact('pendingOrders', 'processingOrders'));
     }
     
     public function approveOrders(Request $request)
@@ -114,11 +115,11 @@ class ThirdPartyOrderController extends Controller
             if ($results['failed'] > 0) {
                 $message .= " Failed to submit {$results['failed']} orders.";
             }
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('success', $message)
                 ->with('errors', $results['errors']);
         } else {
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('error', "Failed to submit all orders. Please check the error messages.")
                 ->with('errors', $results['errors']);
         }
@@ -128,7 +129,7 @@ class ThirdPartyOrderController extends Controller
     {
         // Verify order is pending and external type
         if ($order->status !== 'pending' || $order->service_type !== 'external') {
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('error', "Order #{$order->order_number} is not a pending external order.");
         }
         
@@ -136,7 +137,7 @@ class ThirdPartyOrderController extends Controller
             // Send order to third-party API
             $response = $this->apiService->submitOrder($order);
             
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('success', "Successfully submitted order #{$order->order_number} to the third-party service.");
         } catch (\Exception $e) {
             Log::error('Failed to submit order to third-party API', [
@@ -144,7 +145,7 @@ class ThirdPartyOrderController extends Controller
                 'error' => $e->getMessage()
             ]);
             
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('error', "Failed to submit order #{$order->order_number}: " . $e->getMessage());
         }
     }
@@ -156,7 +157,7 @@ class ThirdPartyOrderController extends Controller
             ->get();
             
         if ($pendingOrders->isEmpty()) {
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('info', "No pending external orders found.");
         }
         
@@ -187,11 +188,11 @@ class ThirdPartyOrderController extends Controller
             if ($results['failed'] > 0) {
                 $message .= " Failed to submit {$results['failed']} orders.";
             }
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('success', $message)
                 ->with('errors', $results['errors']);
         } else {
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('error', "Failed to submit all orders. Please check the error messages.")
                 ->with('errors', $results['errors']);
         }
@@ -209,12 +210,12 @@ class ThirdPartyOrderController extends Controller
                 $message .= " Failed to process {$results['failed']} orders.";
             }
             
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('success', $message);
         } catch (\Exception $e) {
             Log::error('Failed to sync order statuses', ['error' => $e->getMessage()]);
             
-            return redirect()->route('admin.third-party-orders')
+            return redirect()->route('master.third-party-orders')
                 ->with('error', "Failed to sync order statuses: " . $e->getMessage());
         }
     }

@@ -54,7 +54,7 @@ class OrderController extends Controller
         $statuses = Order::distinct()->pluck('status');
         $serviceTypes = Order::distinct()->pluck('service_type');
         
-        return view('admin.orders.index', compact('orders', 'statuses', 'serviceTypes'));
+        return view('master.orders.index', compact('orders', 'statuses', 'serviceTypes'));
     }
     
     /**
@@ -74,7 +74,7 @@ class OrderController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
             
-        return view('admin.orders.show', compact('order', 'report', 'statusLogs'));
+        return view('master.orders.show', compact('order', 'report', 'statusLogs'));
     }
     
     /**
@@ -86,11 +86,11 @@ class OrderController extends Controller
         
         // 检查订单是否可以编辑
         if (in_array($order->status, ['completed', 'canceled', 'refunded'])) {
-            return redirect()->route('admin.orders.show', $id)
+            return redirect()->route('master.orders.show', $id)
                 ->with('error', '该订单已完成/取消/退款，无法编辑');
         }
         
-        return view('admin.orders.edit', compact('order'));
+        return view('master.orders.edit', compact('order'));
     }
     
     /**
@@ -102,7 +102,7 @@ class OrderController extends Controller
         
         // 检查订单是否可以编辑
         if (in_array($order->status, ['completed', 'canceled', 'refunded'])) {
-            return redirect()->route('admin.orders.show', $id)
+            return redirect()->route('master.orders.show', $id)
                 ->with('error', '该订单已完成/取消/退款，无法编辑');
         }
         
@@ -144,7 +144,7 @@ class OrderController extends Controller
             }
         }
         
-        return redirect()->route('admin.orders.show', $id)
+        return redirect()->route('master.orders.show', $id)
             ->with('success', '订单更新成功');
     }
     

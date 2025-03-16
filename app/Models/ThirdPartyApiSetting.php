@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ThirdPartyApiSetting extends Model
 {
     protected $fillable = [
-        'name', 'api_key', 'api_secret', 'api_url', 'settings'
+        'name', 'api_key', 'api_secret', 'api_url', 'email', 'settings'
     ];
 
     protected $casts = [

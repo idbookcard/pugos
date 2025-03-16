@@ -9,7 +9,12 @@ class HomeController extends Controller
 {
     public function index()
     {
-        $featured = Package::where('is_featured', true)
+        $package = Package::where('active', true)
+            ->orderBy('sort_order')
+            ->take(6)
+            ->get();
+      
+        $featured  = Package::where('is_featured', true)
             ->where('active', true)
             ->orderBy('sort_order')
             ->take(6)
@@ -26,7 +31,7 @@ class HomeController extends Controller
             ->orderBy('sort_order')
             ->take(3)
             ->get();
-            
-        return view('home', compact('featured', 'singlePackages', 'monthlyPackages'));
+           
+        return view('home.index', compact('package','featured', 'singlePackages', 'monthlyPackages'));
     }
 }

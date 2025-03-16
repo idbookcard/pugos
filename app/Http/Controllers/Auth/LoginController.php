@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\Auth; // 确保导入 Auth
+
 
 class LoginController extends Controller
 {
@@ -25,8 +27,13 @@ class LoginController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/home';
-
+    protected function redirectTo()
+    {
+        if (Auth::user()->is_admin) { //  判断是否为管理员
+            return '/admin/dashboard';
+        }
+        return '/'; //  普通用户跳转到用户中心
+    }
     /**
      * Create a new controller instance.
      *

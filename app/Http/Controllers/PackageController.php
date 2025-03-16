@@ -85,13 +85,22 @@ class PackageController extends Controller
         return view('packages.guest-post', compact('packages'));
     }
 
-    public function thirdParty()
+    public function customOrder()
     {
-        $packages = Package::where('package_type', 'third-party')
-            ->where('active', true)
+        $category = PackageCategory::where('slug', 'third-party')
+        ->where('active', true)
+        ->firstOrFail();
+
+        $packages = Package::where('category_id', $category->id)
+        ->where('active', true)
             ->orderBy('sort_order')
             ->paginate(12);
             
-        return view('packages.third-party', compact('packages'));
+        return view('packages.category', compact('category', 'packages'));
+
+
+
+
+
     }
 }

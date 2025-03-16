@@ -15,18 +15,18 @@ class UserController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('admin');
+        $this->middleware('master');
     }
     
     public function index()
     {
         $users = User::with('profile')->paginate(15);
-        return view('admin.users.index', compact('users'));
+        return view('master.users.index', compact('users'));
     }
     
     public function create()
     {
-        return view('admin.users.create');
+        return view('master.users.create');
     }
     
     public function store(Request $request)
@@ -65,14 +65,14 @@ class UserController extends Controller
             ]);
         }
         
-        return redirect()->route('admin.users.index')
+        return redirect()->route('master.users.index')
             ->with('success', 'User created successfully.');
     }
     
     public function edit(User $user)
     {
         $user->load('profile');
-        return view('admin.users.edit', compact('user'));
+        return view('master.users.edit', compact('user'));
     }
     
     public function update(Request $request, User $user)
@@ -121,7 +121,7 @@ class UserController extends Controller
             ]);
         }
         
-        return redirect()->route('admin.users.index')
+        return redirect()->route('master.users.index')
             ->with('success', 'User updated successfully.');
     }
     
@@ -143,7 +143,7 @@ class UserController extends Controller
             'notes' => $request->notes,
         ]);
         
-        return redirect()->route('admin.users.edit', $user)
+        return redirect()->route('master.users.edit', $user)
             ->with('success', 'Balance adjusted successfully.');
     }
     
@@ -151,7 +151,7 @@ class UserController extends Controller
     {
         // Check if user has orders before deletion
         if ($user->orders()->count() > 0) {
-            return redirect()->route('admin.users.index')
+            return redirect()->route('master.users.index')
                 ->with('error', 'Cannot delete user with orders.');
         }
         
@@ -159,7 +159,7 @@ class UserController extends Controller
         $user->transactions()->delete();
         $user->delete();
         
-        return redirect()->route('admin.users.index')
+        return redirect()->route('master.users.index')
             ->with('success', 'User deleted successfully.');
     }
 }
