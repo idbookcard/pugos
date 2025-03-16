@@ -1,410 +1,297 @@
-{{-- resources/views/customer/orders/create.blade.php --}}
+{{-- resources/views/packages/show.blade.php --}}
 @extends('layouts.app')
 
-@section('title', '订购 ' . $package->name . ' - SEO外链服务平台')
+@section('title', $package->name)
 
 @section('content')
-<div class="container py-4">
-    @php
-    $breadcrumbs = [
-        '服务列表' => route('packages'),
-        $package->name => route('packages.show', $package),
-        '订购' => '',
-    ];
-    @endphp
-    @include('partials.breadcrumb')
+<div class="container py-5">
+    <!-- 返回链接 -->
+    <div class="mb-4">
+        <a href="{{ route('packages.index') }}" class="text-decoration-none">
+            <i class="bi bi-arrow-left"></i> 返回所有套餐
+        </a>
+    </div>
     
-    <form method="POST" action="{{ route('customer.orders.store', $package) }}" id="orderForm">
-        @csrf
-        <div class="row">
-            <!-- 左侧订单表单 -->
-            <div class="col-lg-8 mb-4 mb-lg-0">
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white py-3">
-                        <h1 class="h4 card-title fw-bold mb-0">订购详情</h1>
+    <div class="row">
+        <!-- 左侧产品详情 -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <!-- 产品标题和类别 -->
+                    <div class="mb-4">
+                        <h1 class="mb-2">{{ $package->name }}</h1>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-light text-dark me-2">{{ $package->category->name }}</span>
+                            <span class="badge bg-light text-dark me-2">{{ $package->delivery_days }}天交付</span>
+                            @if($package->is_featured)
+                                <span class="badge bg-primary">热门选择</span>
+                            @endif
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="selected-package mb-4">
-                            <h5 class="fw-bold mb-3">已选服务</h5>
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center">
-                                        <div>
-                                            <h6>{{ $package->name }}</h6>
-                                            <p class="mb-0 text-muted small">
-                                                @if($package->package_type == 'monthly')
-                                                    月度套餐
-                                                @elseif($package->package_type == 'single')
-                                                    单项套餐
-                                                @elseif($package->package_type == 'third_party')
-                                                    特色外链
-                                                @elseif($package->package_type == 'guest_post')
-                                                    软文外链 · DA{{ $package->guest_post_da }}
-                                                @endif
-                                                · {{ $package->delivery_days }}天交付
-                                            </p>
+                    
+                    <!-- 产品描述 -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold mb-3">产品描述</h5>
+                        <div class="product-description">
+                            {!! nl2br(e($package->description)) !!}
+                        </div>
+                    </div>
+                    
+                    <!-- 产品特性 -->
+                    @if(!empty($package->features))
+                        <div class="mb-4">
+                            <h5 class="fw-bold mb-3">产品特性</h5>
+                            <div class="row">
+                            @foreach(is_string($package->features) ? json_decode($package->features) : $package->features as $feature)
+                            <div class="col-md-6 mb-2">
+                                        <div class="d-flex">
+                                            <div class="me-2 text-success"><i class="bi bi-check-circle-fill"></i></div>
+                                            <div>{{ $feature }}</div>
                                         </div>
-                                        <div class="fw-bold ms-auto">¥{{ number_format($package->price, 2) }}</div>
                                     </div>
-                                </div>
+                                @endforeach
                             </div>
                         </div>
-                        
-                        <div class="required-info mb-4">
-                            <h5 class="fw-bold mb-3">订单信息</h5>
-                            <div class="mb-3">
-                                <label for="target_url" class="form-label">目标网址 <span class="text-danger">*</span></label>
-                                <input type="url" class="form-control @error('target_url') is-invalid @enderror" id="target_url" name="target_url" value="{{ old('target_url') }}" required>
-                                @error('target_url')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text">需要获取外链的目标网址，例如: https://www.example.com</div>
+                    @endif
+                    
+                    <!-- 额外选项预览 -->
+                    @if(!empty($package->available_extras))
+                        <div class="mb-4">
+                            <h5 class="fw-bold mb-3">可选额外服务</h5>
+                            <div class="row">
+                                @php
+                                    $availableExtras = json_decode($package->available_extras, true);
+                                    // 限制显示前4个
+                                    $previewExtras = array_slice($availableExtras, 0, 4);
+                                @endphp
+                                
+                                @foreach($previewExtras as $extra)
+                                    <div class="col-md-6 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2 text-info"><i class="bi bi-puzzle-fill"></i></div>
+                                            <div>
+                                                {{ $extra['name'] ?? $extra['code'] }}
+                                                <span class="text-muted ms-1">
+                                                    (+¥{{ number_format(floatval($extra['price']) * 7.4 / 100 * 1.5, 2) }})
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                
+                                @if(count($availableExtras) > 4)
+                                    <div class="col-12 mt-2">
+                                        <p class="text-muted small">
+                                            <i class="bi bi-info-circle"></i> 
+                                            还有 {{ count($availableExtras) - 4 }} 个额外服务可在下单页面选择
+                                        </p>
+                                    </div>
+                                @endif
                             </div>
-                            
-                            <div class="mb-3">
-                                <label for="keywords" class="form-label">关键词 <span class="text-danger">*</span></label>
-                                <textarea class="form-control @error('keywords') is-invalid @enderror" id="keywords" name="keywords" rows="2" required>{{ old('keywords') }}</textarea>
-                                @error('keywords')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text">多个关键词使用逗号分隔，例如: SEO优化,外链建设,谷歌排名</div>
-                            </div>
-                            
-                            @if(json_decode($package->required_fields)->description ?? false)
-                            <div class="mb-3">
-                                <label for="description" class="form-label">网站描述 <span class="text-danger">*</span></label>
-                                <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="3" required>{{ old('description') }}</textarea>
-                                @error('description')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text">简要描述您的网站内容和目标，帮助我们创建更相关的内容</div>
-                            </div>
-                            @endif
-                            
-                            @if($package->package_type == 'monthly')
-                            <div class="mb-3">
-                                <label for="weekly_urls" class="form-label">周计划URL安排 <span class="text-danger">*</span></label>
-                                <div class="card bg-light">
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="week1_url" class="form-label">第一周URL</label>
-                                            <input type="url" class="form-control" id="week1_url" name="order_data[week1_url]" value="{{ old('order_data.week1_url') }}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="week2_url" class="form-label">第二周URL</label>
-                                            <input type="url" class="form-control" id="week2_url" name="order_data[week2_url]" value="{{ old('order_data.week2_url') }}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="week3_url" class="form-label">第三周URL</label>
-                                            <input type="url" class="form-control" id="week3_url" name="order_data[week3_url]" value="{{ old('order_data.week3_url') }}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="week4_url" class="form-label">第四周URL</label>
-                                            <input type="url" class="form-control" id="week4_url" name="order_data[week4_url]" value="{{ old('order_data.week4_url') }}">
-                                        </div>
-                                        <div class="form-text">
-                                            <i class="bi bi-info-circle me-1"></i> 您可以为每周提供不同的URL，也可以只填写一个URL用于整个月的外链建设
-                                        </div>
+                        </div>
+                    @endif
+                    
+                    <!-- FAQ 部分 -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold mb-3">常见问题</h5>
+                        <div class="accordion" id="packageFaq">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingOne">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                        订购此套餐需要提供哪些信息？
+                                    </button>
+                                </h2>
+                                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#packageFaq">
+                                    <div class="accordion-body">
+                                        您需要提供目标网址和关键词。对于某些套餐，您可能需要提供文章内容或其他详细信息。下单时会有明确的表单指导您填写所需信息。
                                     </div>
                                 </div>
                             </div>
-                            @endif
                             
-                            <div class="mb-3">
-                                <label for="notes" class="form-label">特殊要求 (可选)</label>
-                                <textarea class="form-control @error('notes') is-invalid @enderror" id="notes" name="notes" rows="3">{{ old('notes') }}</textarea>
-                                @error('notes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text">任何额外的特殊要求或说明</div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingTwo">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                        我如何跟踪订单进度？
+                                    </button>
+                                </h2>
+                                <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#packageFaq">
+                                    <div class="accordion-body">
+                                        下单后，您可以在"我的订单"页面查看订单状态和进度。我们会在每个关键节点更新状态，并在完成时提供详细报告。
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingThree">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                        如果我对结果不满意怎么办？
+                                    </button>
+                                </h2>
+                                <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#packageFaq">
+                                    <div class="accordion-body">
+                                        我们承诺提供高质量的服务。如果您对结果不满意，请在收到报告后7天内联系客服，我们将评估情况并提供适当的解决方案。
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingFour">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                        额外选项是如何工作的？
+                                    </button>
+                                </h2>
+                                <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#packageFaq">
+                                    <div class="accordion-body">
+                                        额外选项是对基础套餐的增强服务，您可以根据需求选择不同的额外选项。每个选项都有独立的价格，会在结算时添加到套餐价格中。
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- 服务条款 -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="card-title fw-bold mb-0">服务条款</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <div class="terms-box p-3 border rounded" style="height: 200px; overflow-y: auto;">
-                                <h6>SEO外链服务条款</h6>
-                                <p>欢迎使用我们的SEO外链服务，请在订购前仔细阅读以下条款：</p>
-                                <ol>
-                                    <li><strong>服务内容</strong>：我们将按照所选套餐描述提供外链建设服务。</li>
-                                    <li><strong>交付时间</strong>：我们会尽力在承诺的时间内完成服务，但实际时间可能会有所浮动。</li>
-                                    <li><strong>退款政策</strong>：一旦订单开始处理，将不予退款。如有特殊情况，请联系客服。</li>
-                                    <li><strong>结果保证</strong>：我们不能保证特定的排名结果，SEO效果受多种因素影响。</li>
-                                    <li><strong>内容要求</strong>：提交的网站和关键词必须合法，不含违法内容。</li>
-                                    <li><strong>报告提供</strong>：服务完成后，我们将提供详细的外链报告。</li>
-                                    <li><strong>客户责任</strong>：客户应提供准确的网站和关键词信息。</li>
-                                    <li><strong>服务调整</strong>：我们保留根据实际情况调整服务内容的权利。</li>
-                                </ol>
-                            </div>
-                        </div>
-                        
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="1" id="acceptTerms" name="accept_terms" required>
-                            <label class="form-check-label" for="acceptTerms">
-                                我已阅读并同意服务条款
-                            </label>
-                        </div>
+            </div>
+        </div>
+        
+        <!-- 右侧订购卡片 -->
+        <div class="col-lg-4">
+              <!-- 客服联系卡片 -->
+              <div class="card shadow-sm mt-4">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">需要帮助？</h5>
+                    <p class="mb-3">如果您对此套餐有任何疑问，请随时联系我们的客服团队。</p>
+                    <div class="d-grid gap-2">
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-chat-text-fill me-2"></i> 在线咨询
+                        </a>
+                        <a href="mailto:support@example.com" class="btn btn-outline-secondary">
+                            <i class="bi bi-envelope-fill me-2"></i> 发送邮件
+                        </a>
                     </div>
                 </div>
             </div>
             
-            <!-- 右侧订单摘要 -->
-            <div class="col-lg-4">
-                <div class="card border-0 shadow-sm order-summary sticky-top" style="top: 20px; z-index: 999;">
-                    <div class="card-header bg-primary text-white py-3">
-                        <h5 class="mb-0">订单摘要</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>服务费用</span>
-                                <span>¥{{ number_format($package->price, 2) }}</span>
-                            </div>
-                            <hr>
-                            <div class="d-flex justify-content-between fw-bold">
-                                <span>总计</span>
-                                <span>¥{{ number_format($package->price, 2) }}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <h6 class="fw-bold">支付方式</h6>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="radio" name="payment_method" id="balancePayment" value="balance" checked>
-                                <label class="form-check-label" for="balancePayment">
-                                    账户余额支付
-                                    <span class="badge bg-info ms-2">
-                                        当前余额: ¥{{ number_format(Auth::user()->balance, 2) }}
-                                    </span>
-                                </label>
-                            </div>
-                            
-                            @if(Auth::user()->balance < $package->price)
-                            <div class="alert alert-warning mb-3">
-                                <i class="bi bi-exclamation-triangle me-2"></i>
-                                您的余额不足，请先充值或选择其他支付方式
-                            </div>
-                            
-                            <div class="recharge-options mb-3">
-                                <button type="button" class="btn btn-outline-primary btn-sm mb-2 w-100" data-bs-toggle="modal" data-bs-target="#rechargeModal">
-                                    <i class="bi bi-plus-circle me-1"></i> 立即充值
-                                </button>
-                            </div>
+            <div class="card shadow-sm position-sticky" style="top: 2rem;">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">套餐详情</h5>
+                    
+                    <!-- 价格区域 -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-baseline mb-2">
+                            <span class="fs-2 fw-bold text-primary me-2">¥{{ number_format($package->price, 2) }}</span>
+                            @if($package->original_price > $package->price)
+                                <span class="text-muted text-decoration-line-through">¥{{ number_format($package->original_price, 2) }}</span>
+                                <span class="badge bg-danger ms-2">-{{ $package->discount_percent }}%</span>
                             @endif
                         </div>
                         
-                        <button type="submit" class="btn btn-primary btn-lg w-100 mb-3" {{ Auth::user()->balance < $package->price ? 'disabled' : '' }}>
-                            确认订购
-                        </button>
+                        <p class="text-muted mb-0">预计交付时间：{{ $package->delivery_days }}天</p>
+                    </div>
+                    
+                    <!-- 套餐类型标识 -->
+                    <div class="mb-4">
+                        <div class="d-flex flex-wrap">
+                            @if($package->package_type == 'single')
+                                <span class="badge bg-primary me-2 mb-2">单项套餐</span>
+                            @elseif($package->package_type == 'monthly')
+                                <span class="badge bg-success me-2 mb-2">包月套餐</span>
+                            @elseif($package->package_type == 'third_party')
+                                <span class="badge bg-info me-2 mb-2">第三方服务</span>
+                            @elseif($package->package_type == 'guest_post')
+                                <span class="badge bg-warning text-dark me-2 mb-2">Guest Post</span>
+                            @endif
+                            
+                            @if($package->is_api_product)
+                                <span class="badge bg-secondary me-2 mb-2">API 自动处理</span>
+                            @endif
+                            
+                            @if(!empty($package->available_extras))
+                                <span class="badge bg-info me-2 mb-2">含额外选项</span>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    <!-- 套餐内容概览 -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-2">套餐包含</h6>
+                        <ul class="list-group list-group-flush">
+                        @if(!empty($package->features))
+    @foreach(array_slice(is_string($package->features) ? json_decode($package->features) : $package->features, 0, 5) as $feature)
+        <li class="list-group-item border-0 px-0 py-1">
+            <i class="bi bi-check-circle-fill text-success me-2"></i> {{ $feature }}
+        </li>
+    @endforeach
+@else
+    <li class="list-group-item border-0 px-0 py-1">
+        <i class="bi bi-check-circle-fill text-success me-2"></i> {{ $package->name }}
+    </li>
+@endif
+                        </ul>
+                    </div>
+                    
+                    <!-- 购买按钮 -->
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('orders.create', $package->slug) }}" class="btn btn-primary btn-lg">
+                            立即购买
+                        </a>
                         
-                        <div class="order-help text-center">
-                            <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#contactModal">
-                                <i class="bi bi-question-circle me-1"></i> 需要帮助？联系客服
-                            </a>
-                        </div>
+                        @guest
+                            <p class="text-center text-muted small mt-2">
+                                购买前请先 <a href="{{ route('login') }}">登录</a> 或 <a href="{{ route('register') }}">注册</a>
+                            </p>
+                        @endguest
                     </div>
                 </div>
             </div>
-        </div>
-    </form>
-</div>
-
-<!-- 充值模态框 -->
-<div class="modal fade" id="rechargeModal" tabindex="-1" aria-labelledby="rechargeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="rechargeModalLabel">账户充值</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="rechargeForm" action="{{ route('customer.wallet.deposit') }}" method="POST">
-                    @csrf
-                    <div class="mb-3">
-                        <label for="amount" class="form-label">充值金额</label>
-                        <div class="input-group">
-                            <span class="input-group-text">¥</span>
-                            <input type="number" class="form-control" id="amount" name="amount" min="100" step="100" value="{{ max($package->price - Auth::user()->balance, 100) }}">
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">充值方式</label>
-                        <div class="payment-methods">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <div class="form-check payment-method-card">
-                                        <input class="form-check-input" type="radio" name="payment_channel" id="alipay" value="alipay" checked>
-                                        <label class="form-check-label" for="alipay">
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-alipay fs-4 me-2"></i>
-                                                <span>支付宝</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-check payment-method-card">
-                                        <input class="form-check-input" type="radio" name="payment_channel" id="wechat" value="wechat">
-                                        <label class="form-check-label" for="wechat">
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-wechat fs-4 me-2"></i>
-                                                <span>微信支付</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-check payment-method-card">
-                                        <input class="form-check-input" type="radio" name="payment_channel" id="bank" value="bank">
-                                        <label class="form-check-label" for="bank">
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-bank fs-4 me-2"></i>
-                                                <span>银行卡</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-check payment-method-card">
-                                        <input class="form-check-input" type="radio" name="payment_channel" id="crypto" value="crypto">
-                                        <label class="form-check-label" for="crypto">
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-currency-bitcoin fs-4 me-2"></i>
-                                                <span>数字货币</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">立即充值</button>
-                    </div>
-                </form>
-            </div>
+            
+          
         </div>
     </div>
-</div>
-
-<!-- 联系客服模态框 -->
-<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="contactModalLabel">联系客服</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="text-center mb-4">
-                    <i class="bi bi-headset display-1 text-primary"></i>
-                    <h4 class="mt-3">我们随时为您提供帮助</h4>
-                    <p class="text-muted">选择您喜欢的联系方式</p>
-                </div>
-                
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card text-center h-100">
+    
+    <!-- 相关产品推荐 -->
+    @if(count($relatedPackages) > 0)
+        <div class="mt-5">
+            <h3 class="mb-4">您可能还喜欢</h3>
+            <div class="row g-4">
+                @foreach($relatedPackages as $relatedPackage)
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 shadow-sm hover-shadow">
                             <div class="card-body">
-                                <i class="bi bi-chat-dots fs-1 text-primary mb-3"></i>
-                                <h5>在线聊天</h5>
-                                <p class="small text-muted">工作时间: 9:00-22:00</p>
-                                <button class="btn btn-outline-primary btn-sm">开始聊天</button>
+                                <h5 class="card-title fw-bold mb-1">{{ $relatedPackage->name }}</h5>
+                                <p class="text-muted small mb-3">{{ $relatedPackage->category->name }}</p>
+                                
+                                <div class="mb-3">
+                                    <span class="fs-5 fw-bold text-primary">¥{{ number_format($relatedPackage->price, 2) }}</span>
+                                </div>
+                                
+                                <p class="card-text small mb-3">{{ Str::limit($relatedPackage->description, 60) }}</p>
+                            </div>
+                            
+                            <div class="card-footer bg-white border-top-0 pt-0">
+                                <div class="d-grid">
+                                    <a href="{{ route('packages.show', $relatedPackage->slug) }}" class="btn btn-outline-primary btn-sm">查看详情</a>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card text-center h-100">
-                            <div class="card-body">
-                                <i class="bi bi-telephone fs-1 text-primary mb-3"></i>
-                                <h5>电话咨询</h5>
-                                <p class="small text-muted">工作时间: 9:00-18:00</p>
-                                <a href="tel:+86-21-12345678" class="btn btn-outline-primary btn-sm">拨打电话</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                @endforeach
             </div>
         </div>
-    </div>
+    @endif
 </div>
+@endsection
 
-@push('styles')
+@section('styles')
 <style>
-.order-summary {
-    transition: all 0.3s ease;
-}
-
-@media (max-width: 991.98px) {
-    .order-summary {
-        position: static !important;
+    .hover-shadow {
+        transition: all 0.3s ease;
     }
-}
-
-.payment-method-card {
-    padding: 0.75rem;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    margin-bottom: 0;
-}
-
-.payment-method-card .form-check-input {
-    margin-top: 0.3rem;
-}
-
-.payment-method-card label {
-    width: 100%;
-    cursor: pointer;
-}
-
-.form-check-input:checked + .form-check-label .payment-method-card {
-    border-color: var(--primary-color);
-    background-color: rgba(65, 105, 225, 0.05);
-}
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+    
+    .product-description {
+        line-height: 1.7;
+    }
 </style>
-@endpush
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 表单验证
-    const orderForm = document.getElementById('orderForm');
-    const acceptTerms = document.getElementById('acceptTerms');
-    
-    orderForm.addEventListener('submit', function(e) {
-        if (!acceptTerms.checked) {
-            e.preventDefault();
-            alert('请阅读并同意服务条款');
-            return false;
-        }
-        
-        // 验证余额是否足够
-        @if(Auth::user()->balance < $package->price)
-        e.preventDefault();
-        $('#rechargeModal').modal('show');
-        return false;
-        @endif
-    });
-    
-    // 充值表单处理
-    const rechargeForm = document.getElementById('rechargeForm');
-    rechargeForm.addEventListener('submit', function(e) {
-        // 在实际项目中此处可以添加验证逻辑
-        // 提交后会自动跳转到支付页面
-    });
-});
-</script>
-@endpush
 @endsection

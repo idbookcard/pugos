@@ -169,9 +169,9 @@
                                             <a href="{{ route('packages.show', $package->slug) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-info-circle"></i> 详情
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-primary">
+                                            <a href="{{ route('orders.create', $package->slug) }}" class="btn btn-sm btn-primary">
                                                 <i class="bi bi-cart-plus"></i> 订购
-                                            </button>
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>

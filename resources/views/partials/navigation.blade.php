@@ -32,12 +32,12 @@
 <ul class="navbar-nav ms-auto">
     @guest
         <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('login') ? 'active' : '' }}" href="{{ route('login') }}">
+            <a class="nav-link {{ request()->routeIs('login') ? 'active' : '' }}" href="">
                 <i class="bi bi-box-arrow-in-right me-1"></i>登录
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('register') ? 'active' : '' }}" href="{{ route('register') }}">
+            <a class="nav-link {{ request()->routeIs('register') ? 'active' : '' }}" href="">
                 <i class="bi bi-person-plus me-1"></i>注册
             </a>
         </li>
@@ -56,17 +56,17 @@
                     <li><hr class="dropdown-divider"></li>
                 @endif
                 <li>
-                    <a class="dropdown-item" href="{{ route('customer.dashboard') }}">
+                    <a class="dropdown-item" href="">
                         <i class="bi bi-grid me-1"></i>用户中心
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item" href="{{ route('customer.orders') }}">
+                    <a class="dropdown-item" href="">
                         <i class="bi bi-cart-check me-1"></i>我的订单
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item" href="{{ route('customer.wallet') }}">
+                    <a class="dropdown-item" href="">
                         <i class="bi bi-wallet2 me-1"></i>钱包 (¥{{ number_format(Auth::user()->balance, 2) }})
                     </a>
                 </li>
